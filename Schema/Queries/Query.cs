@@ -1,8 +1,8 @@
 ﻿using Bogus;
 
-namespace GraphqlDemo.Schema
+namespace GraphqlDemo.Schema.Queries
 {
-   public class Query
+    public class Query
     {
         private readonly Faker<InstructorType> _instructorFaker;
         private readonly Faker<StudentType> _studentFaker;

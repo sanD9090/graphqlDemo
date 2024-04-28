@@ -1,4 +1,4 @@
-﻿namespace GraphqlDemo.Schema
+﻿namespace GraphqlDemo.Schema.Queries
 {
 
     public enum Subject
@@ -15,7 +15,7 @@
 
         [GraphQLNonNullType]
         public InstructorType Instructor { get; set; }
-        
+
         public IEnumerable<StudentType> Students { get; set; }
     }
 }

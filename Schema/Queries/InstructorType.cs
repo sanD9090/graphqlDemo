@@ -1,10 +1,10 @@
-﻿namespace GraphqlDemo.Schema
+﻿namespace GraphqlDemo.Schema.Queries
 {
-    public class StudentType
+    public class InstructorType
     {
         public Guid Id { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }
-        public double  GPA { get; set; }
+        public double Salary { get; set; }
     }
 }
