@@ -1,4 +1,5 @@
-﻿using GraphqlDemo.Schema.Queries;
+﻿using GraphqlDemo.Models;
+using GraphqlDemo.Schema.Queries;
 
 namespace GraphqlDemo.Schema.Mutations
 {
