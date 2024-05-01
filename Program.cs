@@ -32,7 +32,6 @@ using (IServiceScope scope = host.Services.CreateScope())
         context.Database.Migrate();
     }
 }
-host.Run();
     
 
 // Configure the HTTP request pipeline.
