@@ -3,8 +3,8 @@ using GraphqlDemo.Schema.Queries;
 using GraphqlDemo.Schema.Subscriptions;
 using GraphqlDemo.Services;
 using GraphqlDemo.Services.Courses;
+using GraphqlDemo.Services.Instructors;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +17,7 @@ var connectionString = configuration.GetConnectionString("default");
 builder.Services.AddPooledDbContextFactory<SchoolDbContext>( o => o.UseSqlite(connectionString));
 
 builder.Services.AddScoped<CoursesRepository>();
+builder.Services.AddScoped<InstructorRepository>();
 
 
 builder.Services.AddControllers();
@@ -39,21 +40,24 @@ using (IServiceScope scope = host.Services.CreateScope())
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
-    {
-        app.UseSwagger();
-        app.UseSwaggerUI();
-    }
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 app.UseHttpsRedirection();
 
-app.UseAuthorization();
 
 app.UseRouting();
+app.UseAuthorization();
 
 app.UseWebSockets();
 
-app.MapControllers();
-app.UseEndpoints(endpoints => endpoints.MapGraphQL());
 
+app.UseEndpoints(endpoints =>
+{
+    endpoints.MapGraphQL();
+    endpoints.MapControllers();
+});
 
 app.Run();
