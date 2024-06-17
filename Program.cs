@@ -52,12 +52,11 @@ app.UseRouting();
 app.UseAuthorization();
 
 app.UseWebSockets();
+app.UseCors(options => options.AllowAnyOrigin().AllowAnyMethod().AllowAnyMethod());
+    
+ 
+app.MapGraphQL();
+app.MapControllers();
 
-
-app.UseEndpoints(endpoints =>
-{
-    endpoints.MapGraphQL();
-    endpoints.MapControllers();
-});
 
 app.Run();

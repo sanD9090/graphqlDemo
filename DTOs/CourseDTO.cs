@@ -23,7 +23,7 @@ namespace GraphqlDemo.DTOs
                 Salary = instructor.Salary,
             };
         }
-
+        
         public IEnumerable<StudentDTO> Students { get; set; }
     }
 }

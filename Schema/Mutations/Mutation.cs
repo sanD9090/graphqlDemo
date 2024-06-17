@@ -40,7 +40,6 @@ namespace GraphqlDemo.Schema.Mutations
                 Name = courseDto.Name,
                 Subject = courseDto.Subject,
                 InstructorId = courseDto.InstructorId
-
             };
 
 

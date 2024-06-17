@@ -17,13 +17,13 @@ namespace GraphqlDemo.Services.Courses
         {
             using SchoolDbContext context = _contextFactory.CreateDbContext();
 
-            return await context.Courses. Include(c => c.Students).ToListAsync();
+            return await context.Courses.ToListAsync();
         }
 
         public async Task<CourseDTO?> GetById(Guid id)
         {
             using SchoolDbContext context = _contextFactory.CreateDbContext();
-            return await context.Courses.Include(c => c.Students).FirstOrDefaultAsync(c => c.Id == id);
+            return await context.Courses.FirstOrDefaultAsync(c => c.Id == id);
         }
         public async Task<CourseDTO> Create(CourseDTO course)
         {

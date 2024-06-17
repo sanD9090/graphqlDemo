@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GraphqlDemo.Migrations
 {
     [DbContext(typeof(SchoolDbContext))]
-    [Migration("20240429172247_init")]
-    partial class init
+    [Migration("20240616202408_initial")]
+    partial class initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -20,10 +20,28 @@ namespace GraphqlDemo.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.4");
 
+            modelBuilder.Entity("CourseDTOStudentDTO", b =>
+                {
+                    b.Property<Guid>("CoursesId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("StudentsId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("CoursesId", "StudentsId");
+
+                    b.HasIndex("StudentsId");
+
+                    b.ToTable("CourseDTOStudentDTO");
+                });
+
             modelBuilder.Entity("GraphqlDemo.DTOs.CourseDTO", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("InstructorDTOId")
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("InstructorId")
@@ -38,7 +56,7 @@ namespace GraphqlDemo.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("InstructorId");
+                    b.HasIndex("InstructorDTOId");
 
                     b.ToTable("Courses");
                 });
@@ -71,9 +89,6 @@ namespace GraphqlDemo.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid?>("CourseDTOId")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -87,32 +102,29 @@ namespace GraphqlDemo.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CourseDTOId");
-
                     b.ToTable("Students");
                 });
 
-            modelBuilder.Entity("GraphqlDemo.DTOs.CourseDTO", b =>
+            modelBuilder.Entity("CourseDTOStudentDTO", b =>
                 {
-                    b.HasOne("GraphqlDemo.DTOs.InstructorDTO", "Instructor")
-                        .WithMany("Courses")
-                        .HasForeignKey("InstructorId")
+                    b.HasOne("GraphqlDemo.DTOs.CourseDTO", null)
+                        .WithMany()
+                        .HasForeignKey("CoursesId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Instructor");
-                });
-
-            modelBuilder.Entity("GraphqlDemo.DTOs.StudentDTO", b =>
-                {
-                    b.HasOne("GraphqlDemo.DTOs.CourseDTO", null)
-                        .WithMany("Students")
-                        .HasForeignKey("CourseDTOId");
+                    b.HasOne("GraphqlDemo.DTOs.StudentDTO", null)
+                        .WithMany()
+                        .HasForeignKey("StudentsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("GraphqlDemo.DTOs.CourseDTO", b =>
                 {
-                    b.Navigation("Students");
+                    b.HasOne("GraphqlDemo.DTOs.InstructorDTO", null)
+                        .WithMany("Courses")
+                        .HasForeignKey("InstructorDTOId");
                 });
 
             modelBuilder.Entity("GraphqlDemo.DTOs.InstructorDTO", b =>
