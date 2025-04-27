@@ -1,0 +1,1683 @@
+openapi: 3.0.3
+info:
+  title: Aimi Config API
+  description: Operations related to user authentication, templates(base project) and also machine(project).
+  version: 1.0.0
+  contact:
+    name: IMA Schelling Group
+
+    url: https://imaschelling.com
+  termsOfService: https://www.imaschelling.com/en/general-terms-of-business
+  license:
+    name: IMA Schelling Group © 2024
+    url: https://www.imaschelling.com
+
+servers:
+  - url: https://{ServerHost}
+    variables:
+      ServerHost:
+        description: Host name and port of the server
+        default: localhost:7005
+        enum:
+          - localhost:9002
+          - localhost:7005
+  - url: http://{ServerHost}
+    variables:
+      ServerHost:
+        description: Host name and port of the server
+        default: localhost:5280
+
+tags:
+  - name: Authentication
+    description: Operations related to user authentication
+
+  - name: Template
+    description: Possibility to read, create, update and delete templates. Read and write permissions are required in order to access and modify templates.
+
+  - name: Project
+    description: Possibility to read, create, update and delete projects. Read and write permissions are required in order to access and modify projects.
+
+  - name: ExportData
+    description: Exports data to project database.
+
+  - name: MDM
+    description: Possibility to only read data from master data management.
+
+  - name: MC
+    description: Machine Creator application functionality.
+
+paths:
+  /auth/tokens/{code}/{redirectUri}:
+    get:
+      tags:
+        - Authentication
+      summary: Exchange authorization code for access token
+      description: Exchanges an authorization code received from Keycloak for an access token
+      parameters:
+        - in: path
+          name: code
+          required: true
+          content:
+            application/json:
+              schema:
+                type: string
+                properties:
+                  code:
+                    type: string
+                    description: The authorization code received from the authorization server.
+                    example: e2381ef6-1a21-462d-8762-e08401543386.27316330-bf6d-4ea4-a8b4-94de3a0b0804.f00e75ef-6701-40f1-8d4f-0c43b0f2174a
+        - in: path
+          name: redirectUri
+          required: true
+          content:
+            application/json:
+              schema:
+                type: string
+                properties:
+                  redirectUri:
+                    type: string
+                    description: The redirect URI that was used in the authorization request.
+                    example: http://localhost:5280/index.html
+      responses:
+        "200":
+          description: Successful response with the token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "400":
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error code.
+                  error_description:
+                    type: string
+                    description: Detailed error description.
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error code.
+                  error_description:
+                    type: string
+                    description: Detailed error description.
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Get new access token based on refresh token.
+      requestBody:
+        description: Gets a new access token from identity provider by exchanging refresh token.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refresh_token:
+                  type: string
+                  description: Active refresh token.
+      responses:
+        "200":
+          description: Successful response with the token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "400":
+          description: Invalid data - Refresh token can not be empty
+        "401":
+          description: UnAuthorized - Token expired
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error code.
+                  error_description:
+                    type: string
+                    description: Detailed error description
+
+  /templates:
+    get:
+      tags:
+        - Template
+      summary: Returns latest version of all templates
+      security:
+        - bearerAuth:
+            - acm-admin
+            - acm-basic
+            - acm-project-planner
+            - acm-template-planner
+      description: Retrives latest version of all templates
+      responses:
+        "200":
+          description: OK - List of templates with latest version or empty list if no template exists.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TemplateMetaData"
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error code.
+                  error_description:
+                    type: string
+                    description: Detailed error description
+
+    post:
+      tags:
+        - Template
+      summary: Creates a new template.
+      security:
+        - bearerAuth:
+            - acm-admin
+            - acm-template-planner
+      operationId: CreateTemplate
+      requestBody:
+        description: Template data that need to be created.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTemplate"
+      responses:
+        "201":
+          description: Created - Template has been created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateTemplate"
+        "400":
+          description: Invalid data - Template already exist.
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error code.
+                  error_description:
+                    type: string
+                    description: Detailed error description
+
+  /templates/names:
+    get:
+      tags:
+        - Template
+      summary: Returns names of the latest template versions
+      security:
+        - bearerAuth:
+            - acm-admin
+            - acm-basic
+            - acm-project-planner
+            - acm-template-planner
+      description: Retrives names of all templates
+      responses:
+        "200":
+          description: OK - List of template names or empty list if no template exists.
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/TemplateSelection"
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error code.
+                  error_description:
+                    type: string
+                    description: Detailed error description
+
+  /templates/{id}:
+    get:
+      tags:
+        - Template
+      summary: Returns a template by id
+      security:
+        - bearerAuth:
+            - acm-admin
+            - acm-basic
+            - acm-project-planner
+            - acm-template-planner
+      description: Retrieves a template by Id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: object
+                    description: The ObjectId of respective template.
+                    example: 66c2de0c93181c326e5d5497
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Template"
+
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error code
+                  error_description:
+                    type: string
+                    description: Detailed error description
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error code
+                  error_description:
+                    type: string
+                    description: Detailed error description
+
+    patch:
+      tags:
+        - Template
+      summary: Updates an existing template.
+      security:
+        - bearerAuth:
+            - acm-admin
+            - acm-template-planner
+      operationId: UpdateTemplate
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Unique identifier of the template to update
+      requestBody:
+        description: Template data to be updated.
+        content:
+          application/json-patch+json:
+            schema:
+              $ref: "#/components/schemas/UpdateData"
+      responses:
+        "204":
+          description: No Content
+
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+        "401":
+          description: Unauthorized
+
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+        "500":
+          description: Internal Server Error - An unexpected error occurred.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /templates/key/{key}:
+    get:
+      tags:
+        - Template
+      summary: Returns a template by key
+      security:
+        - bearerAuth:
+            - acm-admin
+            - acm-basic
+            - acm-project-planner
+            - acm-template-planner
+      description: Retrieves a template by key
+      parameters:
+        - in: path
+          name: key
+          required: true
+          content:
+            application/json:
+              schema:
+                type: string
+                properties:
+                  key:
+                    type: string
+                    description: The key of single template
+                    example: Template_1
+        - in: query
+          name: version
+          required: false
+          content:
+            application/json:
+              schema:
+                type: integer
+                properties:
+                  version:
+                    type: integer
+                    description: The version of the template
+                    example: 1
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Template"
+
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error code
+                  error_description:
+                    type: string
+                    description: Detailed error description
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error code.
+                  error_description:
+                    type: string
+                    description: Detailed error description
+
+  /projects:
+    get:
+      tags:
+        - Project
+      summary: Returns latest version of all projects
+      security:
+        - bearerAuth:
+            - acm-admin
+            - acm-basic
+            - acm-project-planner
+            - acm-template-planner
+      description: Retrives list of latest version of all projects
+      parameters:
+        - in: query
+          name: template_id
+          required: false
+          description: The template id
+          schema:
+            type: string
+            example: 67597e3b2341644b38755daa
+        - in: query
+          name: fields
+          required: false
+          description: Name of the fields to be retrived
+          schema:
+            type: string
+            example: id,customer_name,commission_number
+      responses:
+        "200":
+          description: OK - List of projects  or empty list if no project exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMetaData"
+        "400":
+          description: Bad request, e.g., invalid template ID.
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error code.
+                  error_description:
+                    type: string
+                    description: Detailed error description
+    post:
+      tags:
+        - Project
+      summary: Creates a new project from a template.
+      security:
+        - bearerAuth:
+            - acm-admin
+            - acm-project-planner
+      operationId: CreateProjectFromTemplate
+      requestBody:
+        description: Project data that need to be created.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProject"
+      responses:
+        "201":
+          description: Created - Project has been created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateProject"
+        "400":
+          description: Invalid data - Project already exist with given commission number
+        "401":
+          description: UnAuthorized
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error code.
+                  error_description:
+                    type: string
+                    description: Detailed error description
+
+  /projects/{id}:
+    get:
+      tags:
+        - Project
+      summary: Returns a project by id
+      security:
+        - bearerAuth:
+            - acm-admin
+            - acm-basic
+            - acm-project-planner
+            - acm-template-planner
+      description: Retrieves a project by Id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: object
+                    description: The ObjectId of respective project.
+                    example: 66c2de0c93181c326e5d5497
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error code
+                  error_description:
+                    type: string
+                    description: Detailed error description
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error code
+                  error_description:
+                    type: string
+                    description: Detailed error description
+
+    patch:
+      tags:
+        - Project
+      summary: Updates an existing project from a template.
+      security:
+        - bearerAuth:
+            - acm-admin
+            - acm-project-planner
+      operationId: UpdateProjectFromTemplate
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Unique identifier of the project to update
+      requestBody:
+        description: Project data to be updated.
+        content:
+          application/json-patch+json:
+            schema:
+              $ref: "#/components/schemas/UpdateData"
+      responses:
+        "204":
+          description: No Content
+
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+            text/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+            text/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "500":
+          description: Internal Server Error - An unexpected error occurred.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+            text/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /projects/download/{id}:
+    get:
+      tags:
+        - Project
+      summary: Download file by id
+      security:
+        - bearerAuth:
+            - acm-admin
+            - acm-basic
+            - acm-project-planner
+            - acm-template-planner
+      description: Download a file by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            description: The ObjectId of the respective project
+            example: 66c2de0c93181c326e5d5497
+      responses:
+        "200":
+          description: Downloaded successfully
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+                description: The downloaded file as a stream
+          headers:
+            Content-Disposition:
+              description: Indicate that the file is an attachement to download
+              schema:
+                type: string
+                example: attachment;
+        "401":
+          description: Unathorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error code
+                  error_description:
+                    type: string
+                    description: Detailed error description
+        "404":
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error code
+                  error_description:
+                    type: string
+                    description: Detailed error description
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error code
+                  error_description:
+                    type: string
+                    description: Detailed error description
+
+  /export/aimidefaultdata/{projectCommissionNo}:
+    get:
+      tags:
+        - ExportData
+      summary: Exporting aimi default data from ACM to project database.
+      description: Exports edge material types, edge materials, glue materials, tools types, tools from ACM to project database only if project database is already there else ignores it.
+      parameters:
+        - in: path
+          name: projectCommissionNo
+          description: commission number of the project
+          required: true
+          schema:
+            type: string
+            example: "01234-0123"
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Exporting interface tags completed successfully"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+            text/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+            text/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+            text/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+        "500":
+          description: Internal Server Error - An unexpected error occurred.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+            text/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /export/interfacetags/{projectId}:
+    get:
+      tags:
+        - ExportData
+      summary: Exporting interface tags data to project database.
+      description: Based on unit, exporting of mcinterface tags is done and  based on preparation list , it mapps & exports mdminterface tags to project database.
+      parameters:
+        - in: path
+          name: projectId
+          description: project Id  of the project
+          required: true
+          schema:
+            type: string
+            example: "672847ee4a0b8165cbf74355"
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Exporting interface tags completed successfully"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+            text/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+            text/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+            text/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: Confilct
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "500":
+          description: Internal Server Error - An unexpected error occurred.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+            text/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /mdm/units:
+    get:
+      tags:
+        - MDM
+      summary: Return meta data of all units
+      description: Retrives unit meta data of unit from MDM databse
+      parameters:
+        - in: query
+          name: unit_key
+          required: false
+          description: unit_key
+          schema:
+            type: string
+            example: FB05_D4611T02V01ProfileScraper
+        - in: query
+          name: fields
+          required: false
+          description: Name of the fields to be retrived
+          schema:
+            type: string
+            example: key,key_label,description,function_tag,icon,function
+        - in: query
+          name: cursor
+          required: false
+          description: Cursor for pagination
+          schema:
+            type: string
+        - in: query
+          name: axis_data
+          required: false
+          description: Get units with axis data
+          schema:
+            type: boolean
+            example: true
+        - in: query
+          name: line_data
+          required: false
+          description: Get units with line data
+          schema:
+            type: boolean
+            example: true
+        - in: query
+          name: is_latest
+          required: false
+          description: Get units with latest version
+          schema:
+            type: boolean
+            example: true
+        - in: query
+          name: limit
+          required: true
+          description: No. of records to fetch
+          schema:
+            type: number
+            example: "10"
+
+      responses:
+        "200":
+          description: OK - List of keys or empty list if no key exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Units"
+        "400":
+          description: Bad request, e.g., invalid unit key.
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error code.
+                  error_description:
+                    type: string
+                    description: Detailed error description
+
+  /mdm/units/{unit_key}/nodes:
+    get:
+      tags:
+        - MDM
+      summary: Return global key of a unit's node filtered by function.
+      description: Retrieves the global key of a unit filtered by `function`.
+      parameters:
+        - in: path
+          name: unit_key
+          required: true
+          description: Filter by unit key.
+          schema:
+            type: string
+            example: FB05_D4611T02V01ProfileScraper
+        - in: query
+          name: type
+          required: true
+          description: Filter units based on function (e.g., `line` or `segment` or `axis` or 'numericparameter').
+          schema:
+            type: string
+            enum: [line, segment, axis, numericparameter]
+            example: line
+      responses:
+        "200":
+          description: OK - Returns the global key of the unit.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GlobalKeys"
+        "400":
+          description: Bad request, e.g., missing function.
+        "401":
+          description: Unauthorized.
+        "404":
+          description: Not found - No units match the criteria.
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error code.
+                  error_description:
+                    type: string
+                    description: Detailed error description.
+
+  /mc/projects:
+    post:
+      tags:
+        - MC
+      summary: Create a database for a project
+      description: Creates a backup database for the specified project.
+      operationId: createMasterProjectDatabase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - projectId
+              properties:
+                projectId:
+                  type: string
+                  description: ObjectId of the project for which the database will be created.
+            example:
+              projectId: "66c2de0c93181c326e5d5497"
+      responses:
+        "201":
+          description: Database successfully created
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "Database created successfully"
+        "400":
+          description: Bad request due to missing or invalid data
+        "409":
+          description: Database already exists
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      x-roles:
+        acm-admin:
+          description: Full access to system resources, including viewing, editing, and downloading templates and machines
+        acm-basic:
+          description: Limited access to system resources, allowing for viewing and downloading templates and machines
+        acm-project-planner:
+          description: Responsible for project planning, with permissions to create, edit, view, and download machines, as well as view and download templates
+        acm-template-planner:
+          description: Focused on template management, with permissions to create, edit, view, and download templates, as well as view and download machines
+
+  schemas:
+    Template:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier of the template
+        key:
+          type: string
+          description: Key of the template
+        name:
+          type: string
+          description: Name of the template
+        version:
+          type: integer
+          description: Version of the template
+        description:
+          type: string
+          description: Description of the template
+        created_at:
+          type: string
+          format: date-time
+          description: Time stamp will be taken at the time of creation of template
+        created_by:
+          type: string
+          description: Username will be taken at the time of creation of template
+        last_modified_at:
+          type: string
+          format: date-time
+          description: Time stamp will be taken at the time of modifying the template
+        last_modified_by:
+          type: string
+          description: UserId will be taken at the time of modifying the template
+        preparation_list:
+          type: array
+          description: List of workpiece for respective template
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+                description: Unique key of the workpiece data
+
+              key_label:
+                type: string
+                description: Label for the respective workpiece
+
+              is_multi_select:
+                type: boolean
+                description: Indicates if multiple selections are allowed. If true, users can select multiple options; if false, only one option can be selected
+
+              option_parameter_key_list:
+                type: array
+                description: List of options provided for the workpiece
+
+                items:
+                  type: object
+                  properties:
+                    key:
+                      type: string
+                      description: Unique key of the options paramter
+
+                    key_label:
+                      type: string
+                      description: Label for the respective option parameter
+
+                    is_enabled:
+                      type: boolean
+                      description: Indicates whether the feature or option is active
+
+        configuration_list:
+          type: array
+          description: List of units requested by user specifications
+          items:
+            type: object
+            properties:
+              section_id:
+                type: string
+                description: Unique id of the section
+
+              key:
+                type: string
+                description: Unique key of the section
+
+              key_label:
+                type: string
+                description: Label for the section
+
+              unit_list:
+                type: array
+                description: List of scoped data for every unit
+
+                items:
+                  type: object
+                  properties:
+                    unit_id:
+                      type: string
+                      description: Unique Identifier of the unit template
+
+                    key:
+                      type: string
+                      description: Unique key of the scoped data
+
+                    key_label:
+                      type: string
+                      description: Label for the scoped data
+                    is_enabled:
+                      type: boolean
+                      description: Indicates which option group it belongs
+                    option_list:
+                      type: array
+                      description: List of option group
+                      items:
+                        type: object
+                        properties:
+                          option_id:
+                            type: string
+                            description: Unique identifier the option
+
+                          label:
+                            type: string
+                            description: Label for thet option group
+
+                          is_multi_select:
+                            type: boolean
+                            description: Indicates if multiple selections are allowed. If true, users can select multiple options; if false, only one option can be selected
+
+                          option_parameter_list:
+                            type: array
+                            description: List of options provided for parameters
+
+                            items:
+                              type: object
+                              properties:
+                                option_parameter_id:
+                                  type: string
+                                  description: Unique Identifier of the option parameters
+
+                                label:
+                                  type: string
+                                  description: Label of the option parameter
+
+                                is_enabled:
+                                  type: boolean
+                                  description: Indicates whether the feature or option is active
+                                parameter_list:
+                                  type: array
+                                  description: Parameters for the option
+                                  items:
+                                    type: object
+                                    properties:
+                                      key:
+                                        type: string
+                                      property_list:
+                                        type: array
+                                        description: Properties of the parameter
+                                        items:
+                                          type: object
+                                          properties:
+                                            key:
+                                              type: string
+                                            value:
+                                              type: integer
+
+    TemplateMetaData:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier of the template
+        key:
+          type: string
+          description: Key of the template
+        name:
+          type: string
+          description: Name of the template
+        version:
+          type: integer
+          description: Version of the template
+        description:
+          type: string
+          description: Description of the template
+        created_at:
+          type: string
+          format: date-time
+          description: Time stamp will be taken at the time of creation of template
+        created_by:
+          type: string
+          description: Username will be taken at the time of creation of template
+        last_modified_at:
+          type: string
+          format: date-time
+          description: Time stamp will be taken at the time of modifying the template
+        last_modified_by:
+          type: string
+          description: Username will be taken at the time of modifying the template
+      example:
+        id: 66e7ced1a06ae05dbb37985c
+        key: Template_1
+        name: Novimat Template
+        version: 1
+        description: Template to configure any Novimat Machine
+        created_at: 2024-09-16T09:11:31.884Z
+        created_by: Prem Kumar
+        last_modified_at: 2024-09-17T09:11:31.884Z
+        last_modified_by: Vaishanvi S
+
+    TemplateSelection:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Id of the template
+        name:
+          type: string
+          description: Name of the template
+
+    ProjectMetaData:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier of the project
+        key:
+          type: string
+          description: Key of the project
+        customer_name:
+          type: string
+          description: Name of the customer for a project
+        commission_number:
+          type: string
+          description: Unique commission number of the project
+        version:
+          type: integer
+          description: Version of the project
+        description:
+          type: string
+          description: Description of the project
+        created_at:
+          type: string
+          format: date-time
+          description: Time stamp will be taken at the time of creation of project
+        created_by:
+          type: string
+          description: Username will be taken at the time of creation of project
+        last_modified_at:
+          type: string
+          format: date-time
+          description: Time stamp will be taken at the time of modifying the project
+        last_modified_by:
+          type: string
+          description: Username will be taken at the time of modifying the project
+      example:
+        id: 66e7ced1a06ae05dbb37985c
+        key: project_1
+        customer_name: Ikea
+        commission_number: 00000-0001
+        version: 1
+        description: project is created by using template
+        created_at: 2024-09-16T09:11:31.884Z
+        created_by: Vaishnavi
+        last_modified_at: 2024-09-17T09:11:31.884Z
+        last_modified_by: Prem
+
+    CreateProject:
+      type: object
+      properties:
+        commission_number:
+          type: string
+          description: Commission number for the project
+          nullable: false
+          maxLength: 10
+        template_id:
+          type: string
+          description: Id of the selected template.
+          nullable: false
+        customer_name:
+          type: string
+          description: Name of the customer for whome the project is being created
+          nullable: false
+        description:
+          type: string
+          description: Description of the Project
+          nullable: true
+      required:
+        - template_id
+        - customer_name
+      example:
+        commission_number: "11500-0156"
+        template_id: "66ea5129f75a6270a57ebe83"
+        customer_name: "Nilkamal India Pvt Ltd."
+        description: "An Edge banding machine created from Novimat."
+
+    CreateTemplate:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the template
+          nullable: false
+        description:
+          type: string
+          description: Description of the Project
+          nullable: true
+      required:
+        - name
+      example:
+        name: Novimat Template
+        description: "Beschreibung für Novimat restellt am 20.08.2024"
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier of the project
+        key:
+          type: string
+          description: Key of the project
+        customer_name:
+          type: string
+          description: Name of the customer
+        commission_number:
+          type: string
+          description: Specific number for the project
+        version:
+          type: integer
+          description: Version of the project
+        description:
+          type: string
+          description: Description of the project
+        created_at:
+          type: string
+          format: date-time
+          description: Time stamp will be taken at the time of creation of project
+        created_by:
+          type: string
+          description: Username will be taken at the time of creation of project
+        last_modified_at:
+          type: string
+          format: date-time
+          description: Time stamp will be taken at the time of modifying the project
+        last_modified_by:
+          type: string
+          description: UserId will be taken at the time of modifying the project
+        preparation_list:
+          type: array
+          description: List of workpiece for respective template
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+                description: Unique key of the workpiece data
+
+              key_label:
+                type: string
+                description: Label for the respective workpiece
+
+              is_multi_select:
+                type: boolean
+                description: Indicates if multiple selections are allowed. If true, users can select multiple options; if false, only one option can be selected
+
+              option_parameter_key_list:
+                type: array
+                description: List of options provided for the workpiece
+
+                items:
+                  type: object
+                  properties:
+                    key:
+                      type: string
+                      description: Unique key of the options paramter
+
+                    key_label:
+                      type: string
+                      description: Label for the respective option parameter
+
+                    is_enabled:
+                      type: boolean
+                      description: Indicates whether the feature or option is active
+        configuration_list:
+          type: array
+          description: List of units requested by user specifications
+          items:
+            type: object
+            properties:
+              section_id:
+                type: string
+                description: Unique id of the section in template
+              key:
+                type: string
+                description: Unique key of the specific unit
+
+              key_label:
+                type: string
+                description: Label for the specific unit
+
+              unit_list:
+                type: array
+                description: List of scoped data for every unit
+
+                items:
+                  type: object
+                  properties:
+                    unit_id:
+                      type: string
+                      description: Unique Identifier of the unit template
+
+                    key:
+                      type: string
+                      description: Unique key of the scoped data
+
+                    key_label:
+                      type: string
+                      description: Label for the scoped data
+                    is_enabled:
+                      type: boolean
+                      description: Indicates which option group it belongs
+                    option_list:
+                      type: array
+                      description: List of option group
+                      items:
+                        type: object
+                        properties:
+                          option_id:
+                            type: string
+                            description: Unique identifier of the option
+
+                          label:
+                            type: string
+                            description: Label for thet option group
+
+                          is_multi_select:
+                            type: boolean
+                            description: Indicates if multiple selections are allowed. If true, users can select multiple options; if false, only one option can be selected
+
+                          option_parameter_list:
+                            type: array
+                            description: List of options provided for parameters
+
+                            items:
+                              type: object
+                              properties:
+                                option_parameter_id:
+                                  type: string
+                                  description: Unique identifier of the option parameters
+
+                                label:
+                                  type: string
+                                  description: Label of the option parameter
+
+                                is_enabled:
+                                  type: boolean
+                                  description: Indicates whether the feature or option is active
+      example:
+        id: "66fc086d16078238b782707f"
+        key: "Project_100"
+        customer_name: "Ikea"
+        commission_number: "11500-0156"
+        description: "An Edge banding machine created from Novimat."
+        version: 1
+        template_id: "66ea5129f75a6270a57ebe83"
+        created_by: "Vaishnavi"
+        created_at: "2024-09-16T09:11:31.884Z"
+        last_modified_by: "Prem"
+        last_modified_at: "2024-09-16T09:11:31.884Z"
+        preparation_list:
+          - key: "Workpiece"
+            key_label: "ID_LBL_Workpiece"
+            is_multi_select: true
+            option_parameter_key_list:
+              - key: "sEdgeCodefs"
+                key_label: "ID_2345"
+                is_enabled: true
+
+        configuration_list:
+          - section_id: "67402469e6759557caa59ba3"
+            key: "st01/ma01"
+            key_label: "ID_38"
+            unit_list:
+              - unit_id: "66fc040f811065a4ded5ed6e"
+                key: "FB05_D6001T01V01Feed"
+                key_label: "LBL_Not_Found"
+                is_enabled: true
+                option_list:
+                  - option_id: "67c01a638d0431068b13d305"
+                    label: "Velocity max(m/min)"
+                    is_multi_select: false
+                    option_parameter_list:
+                      - option_parameter_id: "2ae01a638d6w31068b13dt42"
+                        label: "20-30"
+                        is_enabled: true
+
+    UpdateData:
+      type: array
+      items:
+        properties:
+          op:
+            type: string
+            description: indicates the type of operation
+          path:
+            type: string
+            description: indicates the element to update
+          value:
+            type: object
+            description: provides the new value
+
+    Units:
+      type: object
+      properties:
+        self:
+          type: string
+          format: uri
+          description: The URL to the current page of results.
+          example: https:/baseUrl/units?cursor=abc123&limit=10
+        next:
+          type: string
+          format: uri
+          description: The URL to the next page of results.
+          example: https:/baseUrl/units?cursor=abc123&limit=10
+        prev:
+          type: string
+          format: uri
+          description: The URL to the previous page of results.
+          example: https:/baseUrl/units?cursor=abc123&limit=10
+
+        query:
+          type: object
+          properties:
+            limit:
+              type: integer
+              description: The number of items per page.
+            axis_data:
+              type: boolean
+              example: true
+            line_data:
+              type: boolean
+              example: true
+            is_latest:
+              type: boolean
+              example: true
+        items:
+          type: array
+          description: List of unit data.
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                description: Unique identifier of the unit key.
+              key:
+                type: string
+                description: Key of the unit.
+              description:
+                type: string
+                nullable: true
+                description: Description of the unit key.
+              key_label:
+                type: string
+                description: Label for the unit key.
+              function_tag:
+                type: string
+                description: Tags related to the unit.
+              icon:
+                type: string
+                description: Icon path of the unit.
+              function:
+                type: string
+                description: Indicates which type of function it belongs to.
+              axis_count:
+                type: number
+                description: Axis data count.
+              line_count:
+                type: number
+                description: Line data count.
+              is_latest:
+                type: boolean
+                description: Whether the unit is the latest version or not.
+
+    GlobalKeys:
+      type: array
+      items:
+        type: object
+        properties:
+          Key:
+            type: string
+            description: Unique identifier of the entire structure of the unit from parent to the current child.
+          KeyLabels:
+            type: array
+            items:
+              type: string
+            description: Labels associated with each part of the key.
+
+    Problem:
+      type: object
+      properties:
+        type:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        status:
+          type: integer
+          format: int32
+          nullable: true
+        detail:
+          type: string
+          nullable: true
+        instance:
+          type: string
+          nullable: true
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: The access token.
+        expires_in:
+          type: integer
+          description: Token expiration time in seconds.
+        refresh_expires_in:
+          type: integer
+          description: Refresh token expiration time in seconds.
+        refresh_token:
+          type: string
+          description: The refresh token.
+        token_type:
+          type: string
+          description: The type of token.
+        not-before-policy:
+          type: integer
+        session_state:
+          type: string
+          description: Session state.
+        scope:
+          type: string
+          description: Scopes granted.
+
+security:
+  - bearerAuth: []
